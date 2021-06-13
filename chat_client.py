@@ -5,7 +5,7 @@ import threading
 def read_mdg(socket_client):
     while True:
         # terima pesan
-        data = socket_client.recv(65535)
+        data = socket_client.recv(65535).decode("utf-8")
         if len(data) == 0:
             break
         print(data)
@@ -25,11 +25,20 @@ thread_client.start()
 
 while True:
     # kirim/terima pesan
-    dest = input("Masukkan username tujuan (ketikkan bcast untuk broadcast pesan): ")
-    msg = input("Masukkan pesan Anda: ")
-
-    if msg == "exit":
+    cmd = input("Apa yang ingin Anda lakukan? \nbcast: broadcast pesan\nadd: menambah teman\nmsg: mengirim pesan\n >>>")
+    if cmd == "bcast":
+        dest = "bcast"
+        msg = input("Masukkan pesan Anda: ")
+    elif cmd == "msg":
+        dest = input("Masukkan username tujuan: ")
+        msg = input("Masukkan pesan Anda: ")
+    elif cmd == "add":
+        dest = input("Masukkan username tujuan: ")
+        msg = "add"
+    elif cmd == "exit":
         socket_client.close()
         break
+    else:
+        "Ups, command tidak ada! Coba lagi."
 
     socket_client.send(bytes("{}|{}".format(dest, msg), "utf-8"))

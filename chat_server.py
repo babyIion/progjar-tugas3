@@ -10,14 +10,31 @@ def read_msg(clients, sock_client, addr_client, username_client):
         
         # parsing pesannya
         dest, msg = data.decode("utf-8").split("|")
+        cmd = '' + msg
         msg = "<{}>: {}".format(username_client, msg)
 
         if dest == "bcast":
             # teruskan pesan ke semua client
-            send_broadcast(clients, data, addr_client)
+            send_broadcast(clients, msg, addr_client)
+        elif cmd == "add":
+            if dest in clients:
+                if dest in clients[username_client][3]:
+                    send_msg(sock_client, "{} sudah menjadi teman".format(dest))
+                else:
+                    send_msg(sock_client, "Anda telah berteman dengan {}".format(dest))
+                    clients[username_client][3].add(dest)
+
+                    dest_sock_client = clients[dest][0]
+                    send_msg(dest_sock_client, "Anda telah berteman dengan {}".format(username_client))
+                    clients[dest][3].add(username_client)
+            else:
+                send_msg(sock_client, "{} tidak ditemukan".format(dest))
         else:
-            dest_sock_client = clients[dest][0]
-            send_msg(dest_sock_client, msg)    
+            if dest in clients[username_client][3]:
+                dest_sock_client = clients[dest][0]
+                send_msg(dest_sock_client, msg)
+            else:
+                send_msg(sock_client, "{} belum menjadi teman".format(dest))    
         print(data)
 
     sock_client.close()
@@ -44,6 +61,7 @@ sock_server.listen(5)
 
 # buat dictionary untuk menyimpan informasi tentang client
 clients = {}
+friends = set()
 
 while True:
     # accept connection from client
@@ -58,4 +76,4 @@ while True:
     thread_client.start()
 
     # simpan informasi tentang client ke dictionary
-    clients[username_client] = (sock_client, addr_client, thread_client)
+    clients[username_client] = (sock_client, addr_client, thread_client, friends)
