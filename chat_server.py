@@ -19,7 +19,7 @@ def read_msg(clients, sock_client, addr_client, username_client):
 
         if cmd == "bcast":
             # teruskan pesan ke semua client
-            send_broadcast(clients, msg, addr_client, cmd)
+            send_broadcast(clients, msg, addr_client, cmd, username_client)
         elif cmd == "add":
             if dest in clients:
                 if dest in clients[username_client][3]:
@@ -54,6 +54,7 @@ def read_msg(clients, sock_client, addr_client, username_client):
                 send_msg(sock_client, "{} belum menjadi teman".format(dest), cmd) 
         elif cmd == "msg":
             if dest in clients[username_client][3]:
+                print(clients[username_client][3])
                 dest_sock_client = clients[dest][0]
                 send_msg(dest_sock_client, msg, cmd)
             else:
@@ -64,13 +65,15 @@ def read_msg(clients, sock_client, addr_client, username_client):
     print("Connection closed", addr_client)
 
 # kirim ke semua klien
-def send_broadcast(clients, data, sender_addr_client, cmd):
-    for sock_client, addr_client, _ in clients.values():
+def send_broadcast(clients, data, sender_addr_client, cmd, username_client):
+    for username in clients[username_client][3]:
+        sock_client, addr_client, _, friend = clients[username]
+    # for sock_client, addr_client, _, friend in clients.values():
         if not (sender_addr_client[0] == addr_client[0] and sender_addr_client[1] == addr_client[1]):
             send_msg(sock_client, data, cmd)
 
 def send_msg(socket_client, data, cmd):
-    sock_client.send(bytes("{}|{}".format(data, cmd), "utf-8"))
+    socket_client.send(bytes("{}|{}".format(data, cmd), "utf-8"))
 
 # cek file path
 def find_file(file_name):
@@ -93,7 +96,7 @@ sock_server.listen(5)
 
 # buat dictionary untuk menyimpan informasi tentang client
 clients = {}
-friends = set()
+# friends = set()
 
 while True:
     # accept connection from client
@@ -106,6 +109,8 @@ while True:
     #  buat thread baru untuk membaca pesan
     thread_client = threading.Thread(target=read_msg, args=(clients, sock_client, addr_client, username_client))
     thread_client.start()
+
+    friends = set()
 
     # simpan informasi tentang client ke dictionary
     clients[username_client] = (sock_client, addr_client, thread_client, friends)
