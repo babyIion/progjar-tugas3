@@ -1,5 +1,6 @@
 import socket
 import threading
+import os
 
 def read_msg(clients, sock_client, addr_client, username_client):
     while True:
@@ -9,45 +10,76 @@ def read_msg(clients, sock_client, addr_client, username_client):
             break
         
         # parsing pesannya
-        dest, msg = data.decode("utf-8").split("|")
-        cmd = '' + msg
+        dest, msg, cmd = data.decode("utf-8").split("|")
+        # cmd = '' + msg 
+        file_name = msg
+        file_path = find_file(file_name)
+
         msg = "<{}>: {}".format(username_client, msg)
 
-        if dest == "bcast":
+        if cmd == "bcast":
             # teruskan pesan ke semua client
-            send_broadcast(clients, msg, addr_client)
+            send_broadcast(clients, msg, addr_client, cmd)
         elif cmd == "add":
             if dest in clients:
                 if dest in clients[username_client][3]:
-                    send_msg(sock_client, "{} sudah menjadi teman".format(dest))
+                    send_msg(sock_client, "{} sudah menjadi teman".format(dest), cmd)
                 else:
-                    send_msg(sock_client, "Anda telah berteman dengan {}".format(dest))
+                    send_msg(sock_client, "Anda telah berteman dengan {}".format(dest), cmd)
                     clients[username_client][3].add(dest)
 
                     dest_sock_client = clients[dest][0]
-                    send_msg(dest_sock_client, "Anda telah berteman dengan {}".format(username_client))
+                    send_msg(dest_sock_client, "Anda telah berteman dengan {}".format(username_client), cmd)
                     clients[dest][3].add(username_client)
             else:
-                send_msg(sock_client, "{} tidak ditemukan".format(dest))
-        else:
+                send_msg(sock_client, "{} tidak ditemukan".format(dest), cmd)
+        elif cmd == "file":
             if dest in clients[username_client][3]:
                 dest_sock_client = clients[dest][0]
-                send_msg(dest_sock_client, msg)
+
+                while True:
+                    if file_path is None:
+                        cmd = ""
+                        send_msg(sock_client, "File tidak ditemukan", cmd)
+                        break
+                    send_msg(dest_sock_client, file_name, cmd)
+                    file = open(file_path, 'rb')
+                    while True:
+                        data = file.read(1024)
+                        if not data:
+                            break
+                        socket.send(data)
+                    file.close()
             else:
-                send_msg(sock_client, "{} belum menjadi teman".format(dest))    
+                send_msg(sock_client, "{} belum menjadi teman".format(dest), cmd) 
+        elif cmd == "msg":
+            if dest in clients[username_client][3]:
+                dest_sock_client = clients[dest][0]
+                send_msg(dest_sock_client, msg, cmd)
+            else:
+                send_msg(sock_client, "{} belum menjadi teman".format(dest), cmd)    
         print(data)
 
     sock_client.close()
     print("Connection closed", addr_client)
 
 # kirim ke semua klien
-def send_broadcast(clients, data, sender_addr_client):
+def send_broadcast(clients, data, sender_addr_client, cmd):
     for sock_client, addr_client, _ in clients.values():
         if not (sender_addr_client[0] == addr_client[0] and sender_addr_client[1] == addr_client[1]):
-            send_msg(sock_client, data)
+            send_msg(sock_client, data, cmd)
 
-def send_msg(socket_client, data):
-    sock_client.send(bytes(data, "utf-8"))
+def send_msg(socket_client, data, cmd):
+    sock_client.send(bytes("{}|{}".format(data, cmd), "utf-8"))
+
+# cek file path
+def find_file(file_name):
+    for root, dirs, files in os.walk('../server/dataset'):
+        for file in files:
+            # print(file)
+            if file == file_name:
+                return os.path.join(root, file)
+    return None
 
 # membuat object socket server
 sock_server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)

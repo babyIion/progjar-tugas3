@@ -5,10 +5,18 @@ import threading
 def read_mdg(socket_client):
     while True:
         # terima pesan
-        data = socket_client.recv(65535).decode("utf-8")
+        data, cmd = socket_client.recv(65535).decode("utf-8").split("|")
         if len(data) == 0:
             break
-        print(data)
+        if cmd == "file":
+            file = open(data, 'wb')
+            while True:
+                isi_data = socket.recv(1024)
+                if not isi_data:
+                    break
+                file.write(isi_data)
+        else:
+            print(data)
 
 # buat object socket
 socket_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -25,7 +33,7 @@ thread_client.start()
 
 while True:
     # kirim/terima pesan
-    cmd = input("Apa yang ingin Anda lakukan? \nbcast: broadcast pesan\nadd: menambah teman\nmsg: mengirim pesan\n >>>")
+    cmd = input("Apa yang ingin Anda lakukan? \nbcast: broadcast pesan\nadd: menambah teman\nmsg: mengirim pesan\nfile: mengirim file\n >>>")
     if cmd == "bcast":
         dest = "bcast"
         msg = input("Masukkan pesan Anda: ")
@@ -35,10 +43,13 @@ while True:
     elif cmd == "add":
         dest = input("Masukkan username tujuan: ")
         msg = "add"
+    elif cmd == "file":
+        dest = input("Masukkan username tujuan: ")
+        msg = input("Masukkan lokasi file yang akan dikirim: ")
     elif cmd == "exit":
         socket_client.close()
         break
     else:
         "Ups, command tidak ada! Coba lagi."
 
-    socket_client.send(bytes("{}|{}".format(dest, msg), "utf-8"))
+    socket_client.send(bytes("{}|{}|{}".format(dest, msg, cmd), "utf-8"))
